@@ -27,15 +27,8 @@ class PySparkInterpreter(
 ) extends Interpreter {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  /** Represents the bridge used by this interpreter's Python instance. */
-  private lazy val pySparkBridge = new PySparkBridge(_kernel, _sparkContext)
-
-  /** Represents the Py4j gateway to allow Python to communicate with the JVM. */
-  private lazy val gatewayServer = new GatewayServer(pySparkBridge, 0)
-
-  /** Represents the process used to execute Python code via the bridge. */
-  private lazy val pythonProcess =
-    new PySparkProcess(pySparkBridge, gatewayServer.getListeningPort)
+  private lazy val pySparkService = new PySparkService(_kernel, _sparkContext)
+  private lazy val pySparkTransformer = new PySparkTransformer
 
   /**
    * Executes the provided code with the option to silence output.
@@ -44,16 +37,12 @@ class PySparkInterpreter(
    * @return The success/failure of the interpretation and the output from the
    *         execution or the failure
    */
-  override def interpret(code: String, silent: Boolean): (Result, Either[ExecuteOutput, ExecuteFailure]) = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-
-    val futureResult = pySparkBridge.state.pushCode(code)
-      .map(results => (Results.Success, Left(results)))
-      .recover({ case ex: PySparkException => (Results.Error, Right(ExecuteError(
-      name = ex.getClass.getName,
-      value = ex.getLocalizedMessage,
-      stackTrace = ex.getStackTrace.map(_.toString).toList
-    )))})
+  override def interpret(code: String, silent: Boolean):
+    (Result, Either[ExecuteOutput, ExecuteFailure]) =
+  {
+    val futureResult = pySparkTransformer.transformToInterpreterResult(
+      pySparkService.submitCode(code)
+    )
 
     Await.result(futureResult, 500.seconds)
   }
@@ -63,17 +52,7 @@ class PySparkInterpreter(
    * @return A reference to the interpreter
    */
   override def start(): Interpreter = {
-    // Start without forking the gateway server (needs to have access to
-    // SparkContext in current JVM)
-    logger.debug("Starting gateway server")
-    gatewayServer.start()
-
-    val port = gatewayServer.getListeningPort
-    logger.debug(s"Gateway server running on port $port")
-
-    // Start the Python process used to execute code
-    logger.debug("Launching process to execute Python code")
-    pythonProcess.start()
+    pySparkService.start()
 
     this
   }
@@ -83,11 +62,7 @@ class PySparkInterpreter(
    * @return A reference to the interpreter
    */
   override def stop(): Interpreter = {
-    // Stop the Python process used to execute code
-    pythonProcess.stop()
-
-    // Stop the server used as an entrypoint for Python
-    gatewayServer.shutdown()
+    pySparkService.stop()
 
     this
   }
