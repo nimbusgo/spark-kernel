@@ -52,7 +52,10 @@ object Build extends Build with Settings with SubProjects with TestTasks {
         publishArtifact := false,
         publishLocal := {}
       )
-  ).aggregate(client, kernel, kernel_api, communication, protocol, macros).dependsOn(
+  ).aggregate(
+    client, kernel, kernel_api, communication, protocol, macros,
+    pyspark_interpreter, scala_interpreter
+  ).dependsOn(
     client % "test->test",
     kernel % "test->test"
   )
@@ -100,8 +103,28 @@ trait SubProjects extends Settings with TestTasks {
     macros % "test->test;compile->compile",
     protocol % "test->test;compile->compile",
     communication % "test->test;compile->compile",
-    kernel_api % "test->test;compile->compile"
+    kernel_api % "test->test;compile->compile",
+    pyspark_interpreter % "test->test;compile->compile",
+    scala_interpreter % "test->test;compile->compile"
   )
+
+  /**
+   * Project represents the pyspark interpreter used by the Spark Kernel.
+   */
+  lazy val pyspark_interpreter = addTestTasksToProject(Project(
+    id = "pyspark-interpreter",
+    base = file("pyspark-interpreter"),
+    settings = fullSettings
+  )) dependsOn(kernel_api % "test->test;compile->compile")
+
+  /**
+   * Project represents the scala interpreter used by the Spark Kernel.
+   */
+  lazy val scala_interpreter = addTestTasksToProject(Project(
+    id = "scala-interpreter",
+    base = file("scala-interpreter"),
+    settings = fullSettings
+  )) dependsOn(kernel_api % "test->test;compile->compile")
 
   /**
    * Project representing the kernel-api code used by the Spark Kernel. Others can

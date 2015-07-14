@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 IBM Corp.
+ * Copyright 2015 IBM Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,15 +13,4 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package com.ibm.spark
-
-// TODO: Deprecate and remove this package object as it is difficult to
-//       remember where this type comes from
-package object interpreter {
-  /**
-   * Represents the output from an interpret execution.
-   */
-  type ExecuteOutput = String
-
-}
+libraryDependencies += "org.apache.commons" % "commons-exec" % "1.3"

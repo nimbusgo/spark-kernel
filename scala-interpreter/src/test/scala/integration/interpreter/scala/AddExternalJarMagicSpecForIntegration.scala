@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package integration.interpreter
+package integration.interpreter.scala
 
-import java.io.{OutputStream, ByteArrayOutputStream}
-import java.util.UUID
+import java.io.{ByteArrayOutputStream, OutputStream}
 
+import com.ibm.spark.global.StreamState
 import com.ibm.spark.interpreter._
+import com.ibm.spark.kernel.interpreter.scala.{ScalaInterpreter, StandardSettingsProducer, StandardSparkIMainProducer, StandardTaskManagerProducer}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfter, FunSpec, Matchers}
-import com.ibm.spark.global.StreamState
 
 class AddExternalJarMagicSpecForIntegration
   extends FunSpec with Matchers with MockitoSugar with BeforeAndAfter

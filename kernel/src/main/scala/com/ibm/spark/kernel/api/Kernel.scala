@@ -1,6 +1,7 @@
 package com.ibm.spark.kernel.api
 
 import java.io.{OutputStream, InputStream, PrintStream}
+import java.util.concurrent.ConcurrentHashMap
 
 import com.ibm.spark.annotations.Experimental
 import com.ibm.spark.comm.CommManager
@@ -74,6 +75,14 @@ class Kernel (
    * Represents magic parsing functionality.
    */
   val magicParser = new MagicParser(magicLoader)
+
+  /**
+   * Represents the data that can be shared using the kernel as the middleman.
+   */
+  val data: scala.collection.mutable.Map[String, Any] = {
+    import scala.collection.JavaConverters._
+    new ConcurrentHashMap[String, Any]().asScala
+  }
 
   /**
    * Handles the output of interpreting code.

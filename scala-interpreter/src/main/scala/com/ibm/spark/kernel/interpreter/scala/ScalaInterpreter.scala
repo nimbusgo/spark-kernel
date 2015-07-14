@@ -14,30 +14,29 @@
  * limitations under the License.
  */
 
-package com.ibm.spark.interpreter
+package com.ibm.spark.kernel.interpreter.scala
 
-import java.io.{BufferedReader, InputStreamReader, PrintStream, ByteArrayOutputStream}
+import java.io.{BufferedReader, ByteArrayOutputStream, InputStreamReader, PrintStream}
 import java.net.{URL, URLClassLoader}
 import java.nio.charset.Charset
 import java.util.concurrent.ExecutionException
 
+import com.ibm.spark.global.StreamState
+import com.ibm.spark.interpreter._
 import com.ibm.spark.interpreter.imports.printers.{WrapperConsole, WrapperSystem}
-import com.ibm.spark.utils.{TaskManager, MultiOutputStream}
-import org.apache.spark.repl.{SparkJLineCompletion, SparkIMain}
+import com.ibm.spark.kernel.api.KernelOptions
+import com.ibm.spark.utils.{MultiOutputStream, TaskManager}
+import org.apache.spark.repl.{SparkIMain, SparkJLineCompletion}
 import org.slf4j.LoggerFactory
-import scala.annotation.tailrec
+
 import scala.concurrent.{Await, Future}
-import scala.tools.nsc.{Global, Settings, io}
+import scala.language.reflectiveCalls
 import scala.tools.nsc.backend.JavaPlatform
-import scala.tools.nsc.interpreter._
+import scala.tools.nsc.interpreter.{OutputStream, IR, JPrintWriter, InputStream}
 import scala.tools.nsc.io.AbstractFile
 import scala.tools.nsc.util.MergedClassPath
-
+import scala.tools.nsc.{Global, Settings, io}
 import scala.util.{Try => UtilTry}
-
-import scala.language.reflectiveCalls
-import com.ibm.spark.kernel.api.KernelOptions
-import com.ibm.spark.global.StreamState
 
 class ScalaInterpreter(
   args: List[String],

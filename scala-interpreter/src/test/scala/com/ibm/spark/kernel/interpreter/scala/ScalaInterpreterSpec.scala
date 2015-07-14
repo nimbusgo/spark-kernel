@@ -14,34 +14,26 @@
  * limitations under the License.
  */
 
-package com.ibm.spark.interpreter
+package com.ibm.spark.kernel.interpreter.scala
 
-import java.io.{ByteArrayOutputStream, File, InputStream, OutputStream}
+import java.io.{File, InputStream, OutputStream}
 import java.net.URL
 
 import com.ibm.spark.interpreter.Results.Result
-import org.apache.spark.{SparkConf, HttpServer}
+import com.ibm.spark.interpreter._
 import com.ibm.spark.utils.TaskManager
+import org.apache.spark.SparkConf
 import org.apache.spark.repl.SparkIMain
+import org.mockito.Matchers._
+import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
-import scala.None
-import scala.concurrent.{ExecutionContext, Future}
-import scala.tools.nsc.{interpreter, Settings}
-
 import org.scalatest.mock.MockitoSugar
-import org.scalatest.{BeforeAndAfter, Matchers, FunSpec}
+import org.scalatest.{BeforeAndAfter, FunSpec, Matchers}
 
-import org.mockito.Mockito._
-import org.mockito.Matchers._
-import org.mockito.AdditionalAnswers._
-
-import scala.tools.nsc.backend.JavaPlatform
-import scala.tools.nsc.interpreter.JPrintWriter
-import scala.tools.nsc.io.AbstractFile
-import scala.tools.nsc.util.MergedClassPath
-import scala.tools.nsc.interpreter._
-import scala.collection.JavaConverters._
+import scala.concurrent.Future
+import scala.tools.nsc.Settings
+import scala.tools.nsc.interpreter.{JPrintWriter, IR}
 
 class ScalaInterpreterSpec extends FunSpec
   with Matchers with MockitoSugar with BeforeAndAfter

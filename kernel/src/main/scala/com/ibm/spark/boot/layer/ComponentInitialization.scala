@@ -24,6 +24,8 @@ import com.ibm.spark.dependencies.{DependencyDownloader, IvyDependencyDownloader
 import com.ibm.spark.global
 import com.ibm.spark.interpreter._
 import com.ibm.spark.kernel.api.Kernel
+import com.ibm.spark.kernel.interpreter.pyspark.PySparkInterpreter
+import com.ibm.spark.kernel.interpreter.scala.{TaskManagerProducerLike, StandardSparkIMainProducer, StandardSettingsProducer, ScalaInterpreter}
 import com.ibm.spark.kernel.protocol.v5.KMBuilder
 import com.ibm.spark.kernel.protocol.v5.kernel.ActorLoader
 import com.ibm.spark.kernel.protocol.v5.stream.KernelOutputStream
@@ -85,6 +87,12 @@ trait StandardComponentInitialization extends ComponentInitialization {
       config, actorLoader, interpreter, commManager, magicLoader
     )
     val responseMap = initializeResponseMap()
+
+    // NOTE: Tested via initializing the following and returning this
+    //       interpreter instead of the Scala one
+    //val pySparkInterpreter = new PySparkInterpreter(kernel, sparkContext)
+    //pySparkInterpreter.start()
+
     (commStorage, commRegistrar, commManager, interpreter, kernel,
       sparkContext, dependencyDownloader, magicLoader, responseMap)
   }

@@ -84,6 +84,10 @@ class CommandLineOptions(args: Seq[String]) {
     "total number of worker threads to use to execute code"
   ).withRequiredArg().ofType(classOf[Int])
 
+  private val _default_interpreter =
+    parser.accepts("default-interpreter", "default interpreter for the kernel")
+      .withRequiredArg().ofType(classOf[String])
+
   private val options = parser.parse(args: _*)
 
   /*
@@ -123,20 +127,21 @@ class CommandLineOptions(args: Seq[String]) {
     }
 
     val commandLineConfig: Config = ConfigFactory.parseMap(Map(
-        "spark.master" -> get(_master),
-        "stdin_port" -> get(_stdin_port),
-        "shell_port" -> get(_shell_port),
-        "iopub_port" -> get(_iopub_port),
-        "control_port" -> get(_control_port),
-        "hb_port" -> get(_heartbeat_port),
-        "ip" -> get(_ip),
-        "interpreter_args" -> interpreterArgs,
-        "magic_urls" -> getAll(_magic_url).map(_.asJava)
-          .flatMap(list => if (list.isEmpty) None else Some(list)),
-        "spark_configuration" -> getAll(_spark_configuration)
-          .map(list => KeyValuePairUtils.keyValuePairSeqToString(list))
-          .flatMap(str => if (str.nonEmpty) Some(str) else None),
-        "max_interpreter_threads" -> get(_max_interpreter_threads)
+      "spark.master" -> get(_master),
+      "stdin_port" -> get(_stdin_port),
+      "shell_port" -> get(_shell_port),
+      "iopub_port" -> get(_iopub_port),
+      "control_port" -> get(_control_port),
+      "hb_port" -> get(_heartbeat_port),
+      "ip" -> get(_ip),
+      "interpreter_args" -> interpreterArgs,
+      "magic_urls" -> getAll(_magic_url).map(_.asJava)
+        .flatMap(list => if (list.isEmpty) None else Some(list)),
+      "spark_configuration" -> getAll(_spark_configuration)
+        .map(list => KeyValuePairUtils.keyValuePairSeqToString(list))
+        .flatMap(str => if (str.nonEmpty) Some(str) else None),
+      "max_interpreter_threads" -> get(_max_interpreter_threads),
+      "default_interpreter" -> get(_default_interpreter)
     ).flatMap(removeEmptyOptions).asInstanceOf[Map[String, AnyRef]].asJava)
 
     commandLineConfig.withFallback(profileConfig).withFallback(ConfigFactory.load)

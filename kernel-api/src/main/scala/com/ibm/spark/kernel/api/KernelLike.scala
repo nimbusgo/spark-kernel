@@ -73,4 +73,9 @@ trait KernelLike {
    *         not found
    */
   def in: InputStream
+
+  /**
+   * Represents data to be shared using the kernel as the middleman.
+   */
+  val data: scala.collection.mutable.Map[String, Any]
 }
