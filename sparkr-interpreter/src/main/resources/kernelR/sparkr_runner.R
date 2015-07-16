@@ -16,8 +16,6 @@
 
 # Initialize our global environment
 .runnerEnv <- new.env()
-.sparkREnv <- new.env()
-assign(".sparkREnv", .sparkREnv, envir = .runnerEnv)
 
 # Set our script to have its working directory where it currently resides
 # http://stackoverflow.com/questions/1815606/rscript-determine-path-of-the-executing-script
@@ -32,68 +30,11 @@ setwd(script.basename)
 #       b) allow us to have access to the .sparkREnv to do our own work
 # Add the SparkR library to our list
 #.libPaths(c(file.path(Sys.getenv("SPARK_HOME"), "R", "lib"), .libPaths()))
-#.libPaths(c(file.path(script.basename, "lib"), .libPaths()))
-.libPaths(c("/Users/senkwich/projects/nitro/spark-kernel/sparkr-interpreter/src/main/resources/R/lib", .libPaths()))
+install.packages("sparkr_bundle.tar.gz", repos = NULL, type="source")
 library(SparkR)
 
 # Bring in other dependencies not exposed in standard SparkR
-#print(getOption("defaultPackages"))
-#source("generics.R")
-#source("broadcast.R") # Needs generics.R
-#source("client.R")
-#source("column.R")
-#source("context.R")
-#source("DataFrame.R")
-#source("group.R")
-#source("jobj.R")
-#source("pairRDD.R")
-#source("RDD.R")
-#source("schema.R")
-#source("serialize.R")
-#source("deserialize.R")
-#source("backend.R") # Needs jobj.R, serialize.R, deserialize.R
 source("sparkr_runner_utils.R")
-#source("SQLContext.R")
-#source("utils.R")
-#source("zzz.R")
-
-## Only allow connecting to an existing backend
-#existingPort <- Sys.getenv("EXISTING_SPARKR_BACKEND_PORT", "")
-#if (existingPort != "") {
-#  backendPort <- existingPort
-#} else {
-#  stop("No existing backend port found!")
-#}
-#
-## Connect to the backend service
-#.sparkREnv$backendPort <- backendPort
-#tryCatch({
-#  connectBackend("localhost", backendPort)
-#}, error = function(err) {
-#  stop("Failed to connect JVM: ", err)
-#})
-#
-## Set the start time to identify jobjs
-## Seconds resolution is good enough for this purpose, so use ints
-#assign(".scStartTime", as.integer(Sys.time()), envir = .sparkREnv)
-#
-## Retrieve the bridge used to perform actions on the JVM
-#bridge <- callJStatic(
-#  "com.ibm.spark.kernel.interpreter.r.SparkRBridge", "sparkRBridge"
-#)
-#.sparkREnv$bridge <- bridge
-#
-#sc <- callJMethod(bridge, "javaSparkContext")
-#assign("sc", sc, .runnerEnv)
-#sqlContext <- callJMethod(bridge, "sqlContext")
-#assign("sqlContext", sqlContext, .runnerEnv)
-#
-## Load the bridge and state
-#state <- callJMethod(bridge, "state")
-#assign("state", state, .runnerEnv)
-#
-## Register a finalizer to sleep 1 seconds on R exit to make RStudio happy
-#reg.finalizer(.sparkREnv, function(x) { Sys.sleep(1) }, onexit = TRUE)
 
 # Connect to the backend
 sparkR.connect()
@@ -102,11 +43,15 @@ sparkR.connect()
 bridge <- callJStatic(
   "com.ibm.spark.kernel.interpreter.r.SparkRBridge", "sparkRBridge"
 )
+
+# Retrieve the state used to pull code off the JVM and push results back
 state <- callJMethod(bridge, "state")
 
+# Acquire the SparkContext instance to expose
 sc <- callJMethod(bridge, "javaSparkContext")
 assign("sc", sc, .runnerEnv)
 
+# Acquire the SQLContext instance to expose
 sqlContext <- callJMethod(bridge, "sqlContext")
 assign("sqlContext", sqlContext, .runnerEnv)
 

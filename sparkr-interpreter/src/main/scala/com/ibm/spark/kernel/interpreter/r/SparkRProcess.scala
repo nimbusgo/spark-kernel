@@ -19,8 +19,8 @@ class SparkRProcess(
   private val port: Int
 ) extends BrokerProcess(
   processName = "Rscript",
-  entryResource = "sparkR/sparkr_runner.R",
-  otherResources = Seq("sparkR/sparkr_runner_utils.R"),
+  entryResource = "kernelR/sparkr_runner.R",
+  otherResources = Seq("kernelR/sparkr_runner_utils.R", "sparkr_bundle.tar.gz"),
   brokerBridge = sparkRBridge,
   brokerProcessHandler = sparkRProcessHandler,
   arguments = Seq(
