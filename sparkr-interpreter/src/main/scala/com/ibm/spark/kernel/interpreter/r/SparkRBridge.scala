@@ -39,4 +39,6 @@ object SparkRBridge {
 class SparkRBridge(
   private val _kernel: KernelLike,
   private val _sparkContext: SparkContext
-) extends BrokerBridge(_kernel, _sparkContext)
+) extends BrokerBridge(_kernel, _sparkContext) {
+  override val brokerName: String = "SparkR"
+}

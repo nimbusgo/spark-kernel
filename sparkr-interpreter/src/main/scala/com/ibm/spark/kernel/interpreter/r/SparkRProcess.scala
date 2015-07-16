@@ -42,6 +42,7 @@ class SparkRProcess(
   override protected def newProcessEnvironment(): Map[String, String] = {
     val baseEnvironment = super.newProcessEnvironment()
 
+    // Note: Adding the new map values should override the old ones
     baseEnvironment ++ Map(
       "SPARK_HOME"                    -> sparkHome.get,
       "EXISTING_SPARKR_BACKEND_PORT"  -> port.toString

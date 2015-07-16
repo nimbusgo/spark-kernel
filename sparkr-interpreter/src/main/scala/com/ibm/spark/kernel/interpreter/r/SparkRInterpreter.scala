@@ -32,9 +32,18 @@ class SparkRInterpreter(
   /** Represents the interface for R to talk to JVM Spark components. */
   private lazy val rBackend = new ReflectiveRBackend
 
+  /** Represents the process handler used for the SparkR process. */
+  private lazy val sparkRProcessHandler: SparkRProcessHandler =
+    new SparkRProcessHandler(
+      sparkRBridge,
+      restartOnFailure = true,
+      restartOnCompletion = true
+    )
+
   private lazy val sparkRService = new SparkRService(
     rBackend,
-    sparkRBridge
+    sparkRBridge,
+    sparkRProcessHandler
   )
   private lazy val sparkRTransformer = new SparkRTransformer
 

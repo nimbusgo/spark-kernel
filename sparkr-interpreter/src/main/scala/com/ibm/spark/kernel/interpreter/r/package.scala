@@ -13,7 +13,7 @@ package object r {
   type SparkRPromise = BrokerPromise
 
   /**
-   * Represents a block of R code to be evaluated.
+   * Represents a block of SparkR code to be evaluated.
    */
   type SparkRCode = BrokerCode
 }

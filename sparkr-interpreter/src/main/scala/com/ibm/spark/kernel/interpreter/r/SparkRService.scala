@@ -16,21 +16,16 @@ import scala.concurrent.{future, Future}
  *
  * @param rBackend The backend to start to communicate between the JVM and R
  * @param sparkRBridge The bridge to use for communication between the JVM and R
+ * @param sparkRProcessHandler The handler used for events that occur with the
+ *                             SparkR process
  */
 class SparkRService(
   private val rBackend: ReflectiveRBackend,
-  private val sparkRBridge: SparkRBridge
+  private val sparkRBridge: SparkRBridge,
+  private val sparkRProcessHandler: SparkRProcessHandler
 ) extends BrokerService {
   private val logger = LoggerFactory.getLogger(this.getClass)
   @volatile private var rBackendPort: Int = -1
-
-  /** Represents the process handler used for the SparkR process. */
-  private lazy val sparkRProcessHandler: SparkRProcessHandler =
-    new SparkRProcessHandler(
-      sparkRBridge,
-      restartOnFailure = true,
-      restartOnCompletion = true
-    )
 
   /** Represents the process used to execute R code via the bridge. */
   private lazy val sparkRProcess: SparkRProcess = {
