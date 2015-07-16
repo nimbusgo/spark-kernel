@@ -2,6 +2,7 @@ package com.ibm.spark.kernel.interpreter.pyspark
 
 import java.io.{FileOutputStream, File}
 
+import com.ibm.spark.interpreter.broker.BrokerProcess
 import org.apache.commons.exec.environment.EnvironmentUtils
 import org.apache.commons.exec._
 import org.apache.commons.io.IOUtils
@@ -12,133 +13,60 @@ import org.slf4j.LoggerFactory
  *
  * @param pySparkBridge The bridge to use to retrieve kernel output streams
  *                      and the Spark version to be verified
+ * @param pySparkProcessHandler The handler to use when the process fails or
+ *                              completes
  * @param port The port to provide to the PySpark process to use to connect
  *             back to the JVM
+ * @param sparkVersion The version of Spark that the process will be using
  */
 class PySparkProcess(
   private val pySparkBridge: PySparkBridge,
-  private val port: Int
+  private val pySparkProcessHandler: PySparkProcessHandler,
+  private val port: Int,
+  private val sparkVersion: String
+) extends BrokerProcess(
+  processName = "python",
+  entryResource = "PySpark/pyspark_runner.py",
+  otherResources = Nil,
+  brokerBridge = pySparkBridge,
+  brokerProcessHandler = pySparkProcessHandler,
+  arguments = Seq(port.toString, sparkVersion)
 ) {
+  override val brokerName: String = "PySpark"
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  private val ScriptName = "pyspark_runner.py"
-  private val classLoader = this.getClass.getClassLoader
   private val sparkHome = Option(System.getenv("SPARK_HOME"))
     .orElse(Option(System.getProperty("spark.home")))
-    .getOrElse("")
-  private val pythonPath = Option(System.getenv("PYTHONPATH")).getOrElse("")
-  private val processEnvironment = {
-    val procEnvironment = EnvironmentUtils.getProcEnvironment
+  private val pythonPath = Option(System.getenv("PYTHONPATH"))
 
-    // Ensure that PYTHONPATH has proper pointer to SPARK_HOME
-    val newPythonPath =
-      (pythonPath.split(java.io.File.pathSeparator) :+ s"$sparkHome/python/")
-        .map(_.trim).filter(_.nonEmpty).map(new File(_)).distinct
-        .mkString(java.io.File.pathSeparator)
-
-    procEnvironment.put("PYTHONPATH", newPythonPath)
-
-    procEnvironment
-  }
-
-  /** TODO: Allow injection of custom Python process. */
-  private val pythonProcess = "python"
-
-  /** Represents the current process being executed. */
-  @volatile private var currentExecutor: Option[Executor] = None
+  assert(sparkHome.nonEmpty, "PySpark process requires Spark Home to be set!")
+  if (pythonPath.isEmpty) logger.warn("PYTHONPATH not provided for PySpark!")
 
   /**
-   * Creates a new instance of the PySpark runner script.
+   * Creates a new process environment to be used for environment variable
+   * retrieval by the new process.
    *
-   * @return The destination of the PySpark runner script
+   * @return The map of environment variables and their respective values
    */
-  protected def newPySparkRunnerScript(): String = {
-    val pySparkRunnerResourceStream =
-      classLoader.getResourceAsStream(ScriptName)
+  override protected def newProcessEnvironment(): Map[String, String] = {
+    val baseEnvironment = super.newProcessEnvironment()
 
-    val outputScript =
-      new File(System.getProperty("java.io.tmpdir") + s"/$ScriptName")
+    import java.io.File.pathSeparator
 
-    // If our script destination is a directory, we cannot copy the script
-    if (outputScript.exists() && outputScript.isDirectory)
-      throw new PySparkException(s"Failed to create script: $outputScript")
+    val baseSparkHome = sparkHome.get
+    val basePythonPath = pythonPath.getOrElse("")
+    val updatedPythonPath =
+      (basePythonPath.split(pathSeparator) :+ s"$baseSparkHome/python/")
+        .map(_.trim)
+        .filter(_.nonEmpty)
+        .map(new File(_))
+        .distinct
+        .mkString(pathSeparator)
 
-    // Copy the script to the specified temporary destination
-    val outputScriptStream = new FileOutputStream(outputScript)
-    IOUtils.copy(
-      pySparkRunnerResourceStream,
-      outputScriptStream
+    // Note: Adding the new map values should override the old ones
+    baseEnvironment ++ Map(
+      "SPARK_HOME" -> baseSparkHome,
+      "PYTHONPATH" -> updatedPythonPath
     )
-    outputScriptStream.close()
-
-    // Return the destination of the script
-    outputScript.getPath
-  }
-
-  /**
-   * Starts the PySpark process.
-   */
-  def start(): Unit = currentExecutor.synchronized {
-    stop() // Stop any existing process first as we only manage one process
-
-    assert(sparkHome.nonEmpty, "Spark Home must be provided to use PySpark!")
-
-    val script = newPySparkRunnerScript()
-    logger.debug(s"New PySpark script created: $script")
-
-    val sparkVersion = pySparkBridge.javaSparkContext.version
-
-    val commandLine = CommandLine
-      .parse(pythonProcess)
-      .addArgument(script)
-      .addArgument(port.toString)
-      .addArgument(sparkVersion)
-
-    logger.debug(s"PySpark command: ${commandLine.toString}")
-
-    val executor = new DefaultExecutor
-
-    // TODO: Figure out how to dynamically update the output stream used
-    //       to use kernel.out, kernel.err, and kernel.in
-    // NOTE: Currently mapping to standard output/input, which will be caught
-    //       by our system and redirected through the kernel to the client
-    executor.setStreamHandler(new PumpStreamHandler(
-      System.out,
-      System.err,
-      System.in
-    ))
-
-    // Marking exit status of 1 as successful exit
-    executor.setExitValue(1)
-
-    // Prevent the runner from being killed due to run time as it is a
-    // long-term process
-    executor.setWatchdog(new ExecuteWatchdog(ExecuteWatchdog.INFINITE_TIMEOUT))
-
-    logger.debug(s"PySpark environment: $processEnvironment")
-
-    // Start the process using the environment provided to the parent
-    executor.execute(commandLine, processEnvironment, new ExecuteResultHandler {
-      override def onProcessFailed(ex: ExecuteException): Unit = {
-        logger.error(s"PySpark process failed: $ex")
-        currentExecutor = None
-      }
-
-      override def onProcessComplete(exitValue: Int): Unit = {
-        logger.error(s"PySpark process exited: $exitValue")
-        currentExecutor = None
-      }
-    })
-
-    currentExecutor = Some(executor)
-  }
-
-  /**
-   * Stops the PySpark process.
-   */
-  def stop(): Unit = currentExecutor.synchronized {
-    logger.debug("Stopping PySpark process")
-    currentExecutor.foreach(_.getWatchdog.destroyProcess())
-    currentExecutor = None
   }
 }

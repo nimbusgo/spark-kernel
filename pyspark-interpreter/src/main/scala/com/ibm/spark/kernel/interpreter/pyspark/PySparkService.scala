@@ -1,8 +1,6 @@
 package com.ibm.spark.kernel.interpreter.pyspark
 
-import com.ibm.spark.kernel.api.KernelLike
 import com.ibm.spark.kernel.interpreter.pyspark.PySparkTypes._
-import org.apache.spark.SparkContext
 import org.slf4j.LoggerFactory
 import py4j.GatewayServer
 
@@ -12,24 +10,38 @@ import scala.concurrent.Future
  * Represents the service that provides the high-level interface between the
  * JVM and Python.
  *
- * @param _kernel The kernel API to provide to PySpark
- * @param _sparkContext The SparkContext to provide to PySpark
+ * @param gatewayServer The backend to start to communicate between the JVM and
+ *                      Python
+ * @param pySparkBridge The bridge to use for communication between the JVM and
+ *                      Python
+ * @param pySparkProcessHandler The handler used for events that occur with
+ *                              the PySpark process
  */
 class PySparkService(
-  private val _kernel: KernelLike,
-  private val _sparkContext: SparkContext
+  private val gatewayServer: GatewayServer,
+  private val pySparkBridge: PySparkBridge,
+  private val pySparkProcessHandler: PySparkProcessHandler
 ) {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  /** Represents the bridge used by this interpreter's Python instance. */
-  private lazy val pySparkBridge = new PySparkBridge(_kernel, _sparkContext)
-
-  /** Represents the Py4j gateway to allow Python to communicate with the JVM. */
-  private lazy val gatewayServer = new GatewayServer(pySparkBridge, 0)
-
   /** Represents the process used to execute Python code via the bridge. */
-  private lazy val pythonProcess =
-    new PySparkProcess(pySparkBridge, gatewayServer.getListeningPort)
+  private lazy val pySparkProcess = {
+    val p = new PySparkProcess(
+      pySparkBridge,
+      pySparkProcessHandler,
+      gatewayServer.getListeningPort,
+      pySparkBridge.javaSparkContext.version
+    )
+
+    // Update handlers to correctly reset and restart the process
+    pySparkProcessHandler.setResetMethod(message => {
+      p.stop()
+      pySparkBridge.state.reset(message)
+    })
+    pySparkProcessHandler.setRestartMethod(() => p.start())
+
+    p
+  }
 
   /** Starts the PySpark service. */
   def start(): Unit = {
@@ -43,7 +55,7 @@ class PySparkService(
 
     // Start the Python process used to execute code
     logger.debug("Launching process to execute Python code")
-    pythonProcess.start()
+    pySparkProcess.start()
   }
 
   /**
@@ -60,7 +72,7 @@ class PySparkService(
   /** Stops the running PySpark service. */
   def stop(): Unit = {
     // Stop the Python process used to execute code
-    pythonProcess.stop()
+    pySparkProcess.stop()
 
     // Stop the server used as an entrypoint for Python
     gatewayServer.shutdown()

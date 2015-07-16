@@ -27,7 +27,25 @@ class PySparkInterpreter(
 ) extends Interpreter {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  private lazy val pySparkService = new PySparkService(_kernel, _sparkContext)
+  /** Represents the bridge used by this interpreter's Python interface. */
+  private lazy val pySparkBridge = new PySparkBridge(_kernel, _sparkContext)
+
+  /** Represents the interface for Python to talk to JVM Spark components. */
+  private lazy val gatewayServer = new GatewayServer(pySparkBridge, 0)
+
+  /** Represents the process handler used for the PySpark process. */
+  private lazy val pySparkProcessHandler: PySparkProcessHandler =
+    new PySparkProcessHandler(
+      pySparkBridge,
+      restartOnFailure = true,
+      restartOnCompletion = true
+    )
+
+  private lazy val pySparkService = new PySparkService(
+    gatewayServer,
+    pySparkBridge,
+    pySparkProcessHandler
+  )
   private lazy val pySparkTransformer = new PySparkTransformer
 
   /**
