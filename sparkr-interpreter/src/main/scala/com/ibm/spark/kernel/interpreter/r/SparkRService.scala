@@ -2,6 +2,7 @@ package com.ibm.spark.kernel.interpreter.r
 
 import java.util.concurrent.{TimeUnit, Semaphore}
 
+import com.ibm.spark.interpreter.broker.BrokerService
 import com.ibm.spark.kernel.api.KernelLike
 import com.ibm.spark.kernel.interpreter.r.SparkRTypes.{Code, CodeResults}
 import org.apache.spark.SparkContext
@@ -13,27 +14,44 @@ import scala.concurrent.{future, Future}
  * Represents the service that provides the high-level interface between the
  * JVM and R.
  *
- * @param _kernel The kernel API to provide to SparkR
- * @param _sparkContext The SparkContext to provide to SparkR
+ * @param rBackend The backend to start to communicate between the JVM and R
+ * @param sparkRBridge The bridge to use for communication between the JVM and R
  */
 class SparkRService(
-  private val _kernel: KernelLike,
-  private val _sparkContext: SparkContext
-) {
+  private val rBackend: ReflectiveRBackend,
+  private val sparkRBridge: SparkRBridge
+) extends BrokerService {
   private val logger = LoggerFactory.getLogger(this.getClass)
-
-  /** Represents the bridge used by this interpreter's R instance. */
-  private lazy val sparkRBridge = new SparkRBridge(_kernel, _sparkContext)
-
-  /** Represents the interface for R to talk to JVM Spark components. */
-  private lazy val rBackend = new ReflectiveRBackend
   @volatile private var rBackendPort: Int = -1
 
+  /** Represents the process handler used for the SparkR process. */
+  private lazy val sparkRProcessHandler: SparkRProcessHandler =
+    new SparkRProcessHandler(
+      sparkRBridge,
+      restartOnFailure = true,
+      restartOnCompletion = true
+    )
+
   /** Represents the process used to execute R code via the bridge. */
-  private lazy val rProcess = new SparkRProcess(sparkRBridge, rBackendPort)
+  private lazy val sparkRProcess: SparkRProcess = {
+    val p = new SparkRProcess(
+      sparkRBridge,
+      sparkRProcessHandler,
+      rBackendPort
+    )
+
+    // Update handlers to correctly reset and restart the process
+    sparkRProcessHandler.setResetMethod(message => {
+      p.stop()
+      sparkRBridge.state.reset(message)
+    })
+    sparkRProcessHandler.setRestartMethod(() => p.start())
+
+    p
+  }
 
   /** Starts the SparkR service. */
-  def start(): Unit = {
+  override def start(): Unit = {
     logger.debug("Initializing statically-accessible SparkR bridge")
     SparkRBridge.sparkRBridge = sparkRBridge
 
@@ -55,10 +73,11 @@ class SparkRService(
     if (initialized.tryAcquire(backendTimeout, TimeUnit.SECONDS)) {
       // Start the R process used to execute code
       logger.debug("Launching process to execute R code")
-      rProcess.start()
+      sparkRProcess.start()
     } else {
       // Unable to initialize, so throw an exception
-      throw new SparkRException(s"Unable to initialize R backend in ")
+      throw new SparkRException(
+        s"Unable to initialize R backend in $backendTimeout seconds!")
     }
   }
 
@@ -69,14 +88,14 @@ class SparkRService(
    *
    * @return The result as a future to eventually return
    */
-  def submitCode(code: Code): Future[CodeResults] = {
+  override def submitCode(code: Code): Future[CodeResults] = {
     sparkRBridge.state.pushCode(code)
   }
 
   /** Stops the running SparkR service. */
-  def stop(): Unit = {
+  override def stop(): Unit = {
     // Stop the R process used to execute code
-    rProcess.stop()
+    sparkRProcess.stop()
 
     // Stop the server used as an entrypoint for R
     rBackend.close()

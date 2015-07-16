@@ -26,7 +26,16 @@ class SparkRInterpreter(
 ) extends Interpreter {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  private lazy val sparkRService = new SparkRService(_kernel, _sparkContext)
+  /** Represents the bridge used by this interpreter's R instance. */
+  private lazy val sparkRBridge = new SparkRBridge(_kernel, _sparkContext)
+
+  /** Represents the interface for R to talk to JVM Spark components. */
+  private lazy val rBackend = new ReflectiveRBackend
+
+  private lazy val sparkRService = new SparkRService(
+    rBackend,
+    sparkRBridge
+  )
   private lazy val sparkRTransformer = new SparkRTransformer
 
   /**
