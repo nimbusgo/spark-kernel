@@ -12,6 +12,13 @@ trait BrokerService {
   def start(): Unit
 
   /**
+   * Indicates whether or not the service is running.
+   *
+   * @return True if running, otherwise false
+   */
+  def isRunning: Boolean
+
+  /**
    * Submits code to the broker service to be executed and return a result.
    *
    * @param code The code to execute

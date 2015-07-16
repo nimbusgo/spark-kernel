@@ -116,7 +116,10 @@ trait SubProjects extends Settings with TestTasks {
     id = "pyspark-interpreter",
     base = file("pyspark-interpreter"),
     settings = fullSettings
-  )) dependsOn(kernel_api % "test->test;compile->compile")
+  )) dependsOn(
+    protocol % "test->test;compile->compile",
+    kernel_api % "test->test;compile->compile"
+  )
 
   /**
    * Project represents the scala interpreter used by the Spark Kernel.
@@ -125,7 +128,10 @@ trait SubProjects extends Settings with TestTasks {
     id = "scala-interpreter",
     base = file("scala-interpreter"),
     settings = fullSettings
-  )) dependsOn(kernel_api % "test->test;compile->compile")
+  )) dependsOn(
+    protocol % "test->test;compile->compile",
+    kernel_api % "test->test;compile->compile"
+  )
 
   /**
    * Project represents the scala interpreter used by the Spark Kernel.
@@ -134,7 +140,10 @@ trait SubProjects extends Settings with TestTasks {
     id = "sparkr-interpreter",
     base = file("sparkr-interpreter"),
     settings = fullSettings
-  )) dependsOn(kernel_api % "test->test;compile->compile")
+  )) dependsOn(
+    protocol % "test->test;compile->compile",
+    kernel_api % "test->test;compile->compile"
+  )
 
   /**
    * Project representing the kernel-api code used by the Spark Kernel. Others can

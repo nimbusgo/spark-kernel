@@ -25,6 +25,7 @@ import com.ibm.spark.global
 import com.ibm.spark.interpreter._
 import com.ibm.spark.kernel.api.Kernel
 import com.ibm.spark.kernel.interpreter.pyspark.PySparkInterpreter
+import com.ibm.spark.kernel.interpreter.r.SparkRInterpreter
 import com.ibm.spark.kernel.interpreter.scala.{TaskManagerProducerLike, StandardSparkIMainProducer, StandardSettingsProducer, ScalaInterpreter}
 import com.ibm.spark.kernel.protocol.v5.KMBuilder
 import com.ibm.spark.kernel.protocol.v5.kernel.ActorLoader
@@ -34,6 +35,7 @@ import com.ibm.spark.magic.builtin.BuiltinLoader
 import com.ibm.spark.magic.dependencies.DependencyMap
 import com.ibm.spark.utils.{MultiClassLoader, TaskManager, KeyValuePairUtils, LogLike}
 import com.typesafe.config.Config
+import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkContext, SparkConf}
 
 import scala.collection.JavaConverters._
@@ -80,6 +82,9 @@ trait StandardComponentInitialization extends ComponentInitialization {
     val interpreter = initializeInterpreter(config)
     val sparkContext = initializeSparkContext(
       config, appName, actorLoader, interpreter)
+    val sqlContext = initializeSqlContext(sparkContext)
+    updateInterpreterWithSqlContext(sqlContext, interpreter)
+
     val dependencyDownloader = initializeDependencyDownloader(config)
     val magicLoader = initializeMagicLoader(
       config, interpreter, sparkContext, dependencyDownloader)
@@ -90,10 +95,35 @@ trait StandardComponentInitialization extends ComponentInitialization {
 
     // NOTE: Tested via initializing the following and returning this
     //       interpreter instead of the Scala one
-    //val pySparkInterpreter = new PySparkInterpreter(kernel, sparkContext)
+    val pySparkInterpreter = new PySparkInterpreter(kernel, sparkContext)
     //pySparkInterpreter.start()
+    kernel.data.put("PySpark", pySparkInterpreter)
 
-    (commStorage, commRegistrar, commManager, interpreter, kernel,
+    // NOTE: Tested via initializing the following and returning this
+    //       interpreter instead of the Scala one
+    val sparkRInterpreter = new SparkRInterpreter(kernel, sparkContext)
+    //sparkRInterpreter.start()
+    kernel.data.put("SparkR", sparkRInterpreter)
+
+    // Add Scala to available data map
+    kernel.data.put("Scala", interpreter)
+    val defaultInterpreter: Interpreter =
+      config.getString("default_interpreter").toLowerCase match {
+        case "scala" =>
+          logger.info("Using Scala interpreter as default!")
+          interpreter
+        case "pyspark" =>
+          logger.info("Using PySpark interpreter as default!")
+          pySparkInterpreter
+        case "sparkr" =>
+          logger.info("Using SparkR interpreter as default!")
+          sparkRInterpreter
+        case unknown =>
+          logger.warn(s"Unknown interpreter '$unknown'! Defaulting to Scala!")
+          interpreter
+      }
+
+    (commStorage, commRegistrar, commManager, defaultInterpreter, kernel,
       sparkContext, dependencyDownloader, magicLoader, responseMap)
   }
 
@@ -247,26 +277,80 @@ trait StandardComponentInitialization extends ComponentInitialization {
       //       are added or classes are refactored to different projects
       val jarPaths = Seq(
         // Macro project
-        getJarPathFor(classOf[com.ibm.spark.annotations.Experimental]),
+        classOf[com.ibm.spark.annotations.Experimental],
 
         // Protocol project
-        getJarPathFor(classOf[com.ibm.spark.kernel.protocol.v5.KernelMessage]),
+        classOf[com.ibm.spark.kernel.protocol.v5.KernelMessage],
 
         // Communication project
-        getJarPathFor(classOf[com.ibm.spark.communication.SocketManager]),
+        classOf[com.ibm.spark.communication.SocketManager],
 
         // Kernel-api project
-        getJarPathFor(classOf[com.ibm.spark.kernel.api.KernelLike]),
+        classOf[com.ibm.spark.kernel.api.KernelLike],
+
+        // Scala-interpreter project
+        classOf[com.ibm.spark.kernel.interpreter.scala.ScalaInterpreter],
+
+        // PySpark-interpreter project
+        classOf[com.ibm.spark.kernel.interpreter.pyspark.PySparkInterpreter],
+
+        // SparkR-interpreter project
+        classOf[com.ibm.spark.kernel.interpreter.r.SparkRInterpreter],
 
         // Kernel project
-        getJarPathFor(classOf[com.ibm.spark.boot.KernelBootstrap])
-      )
+        classOf[com.ibm.spark.boot.KernelBootstrap]
+      ).map(getJarPathFor)
 
       logger.info("Adding kernel jars to cluster:\n- " +
         jarPaths.mkString("\n- "))
       jarPaths.foreach(sparkContext.addJar)
     } else {
       logger.info("Running in local mode! Not adding self as dependency!")
+    }
+  }
+
+  protected[layer] def initializeSqlContext(sparkContext: SparkContext) = {
+    val sqlContext: SQLContext = try {
+      logger.info("Attempting to create Hive Context")
+      val hiveContextClassString =
+        "org.apache.spark.sql.hive.HiveContext"
+
+      logger.debug(s"Looking up $hiveContextClassString")
+      val hiveContextClass = Class.forName(hiveContextClassString)
+
+      val sparkContextClass = classOf[SparkContext]
+      val sparkContextClassName = sparkContextClass.getName
+
+      logger.debug(s"Searching for constructor taking $sparkContextClassName")
+      val hiveContextContructor =
+        hiveContextClass.getConstructor(sparkContextClass)
+
+      logger.debug("Invoking Hive Context constructor")
+      hiveContextContructor.newInstance(sparkContext).asInstanceOf[SQLContext]
+    } catch {
+      case _: Throwable =>
+        logger.warn("Unable to create Hive Context! Defaulting to SQL Context!")
+        new SQLContext(sparkContext)
+    }
+
+    sqlContext
+  }
+
+  protected[layer] def updateInterpreterWithSqlContext(
+    sqlContext: SQLContext, interpreter: Interpreter
+  ): Unit = {
+    interpreter.doQuietly {
+      // TODO: This only adds the context to the main interpreter AND
+      //       is limited to the Scala interpreter interface
+      logger.debug("Adding SQL Context to main interpreter")
+      interpreter.bind(
+        "sqlContext",
+        classOf[SQLContext].getName,
+        sqlContext,
+        List( """@transient""")
+      )
+
+      sqlContext
     }
   }
 

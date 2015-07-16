@@ -22,6 +22,7 @@ import com.ibm.spark.interpreter.Interpreter
 import com.ibm.spark.kernel.api.KernelLike
 import com.ibm.spark.magic.{MagicLoader, Magic}
 import org.apache.spark.SparkContext
+import org.apache.spark.sql.SQLContext
 
 import scala.reflect.runtime.universe._
 import com.ibm.spark.dependencies.DependencyDownloader
@@ -77,6 +78,20 @@ class DependencyMap {
 
     this
   }
+  
+  /**
+   * Sets the SQLContext for this map.
+   * @param sqlContext The new SQLContext
+   */
+  def setSQLContext(sqlContext: SQLContext) = {
+    internalMap(typeOf[IncludeSQLContext]) =
+      PartialFunction[Magic, Unit](
+        magic =>
+          magic.asInstanceOf[IncludeSQLContext].sqlContext_=(sqlContext)
+      )
+
+    this
+  }
 
   /**
    * Sets the OutputStream for this map.
@@ -101,7 +116,7 @@ class DependencyMap {
       PartialFunction[Magic, Unit](
         magic =>
           magic.asInstanceOf[IncludeDependencyDownloader]
-            .dependencyDownloader=(dependencyDownloader)
+            .dependencyDownloader_=(dependencyDownloader)
       )
 
     this
@@ -116,7 +131,7 @@ class DependencyMap {
       PartialFunction[Magic, Unit](
         magic =>
           magic.asInstanceOf[IncludeKernel]
-            .kernel=(kernel)
+            .kernel_=(kernel)
       )
 
     this
@@ -131,7 +146,7 @@ class DependencyMap {
       PartialFunction[Magic, Unit](
         magic =>
           magic.asInstanceOf[IncludeMagicLoader]
-            .magicLoader=(magicLoader)
+            .magicLoader_=(magicLoader)
       )
 
     this

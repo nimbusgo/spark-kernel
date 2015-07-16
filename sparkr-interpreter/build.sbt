@@ -13,4 +13,3 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-libraryDependencies += "org.apache.commons" % "commons-exec" % "1.3"

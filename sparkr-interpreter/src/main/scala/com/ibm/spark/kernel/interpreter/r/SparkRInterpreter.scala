@@ -57,6 +57,8 @@ class SparkRInterpreter(
   override def interpret(code: String, silent: Boolean):
     (Result, Either[ExecuteOutput, ExecuteFailure]) =
   {
+    if (!sparkRService.isRunning) sparkRService.start()
+
     val futureResult = sparkRTransformer.transformToInterpreterResult(
       sparkRService.submitCode(code)
     )

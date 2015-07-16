@@ -58,6 +58,8 @@ class PySparkInterpreter(
   override def interpret(code: String, silent: Boolean):
     (Result, Either[ExecuteOutput, ExecuteFailure]) =
   {
+    if (!pySparkService.isRunning) pySparkService.start()
+
     val futureResult = pySparkTransformer.transformToInterpreterResult(
       pySparkService.submitCode(code)
     )

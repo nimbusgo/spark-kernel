@@ -53,6 +53,10 @@ bridge <- callJStatic(
 # Retrieve the state used to pull code off the JVM and push results back
 state <- callJMethod(bridge, "state")
 
+# Acquire the kernel API instance to expose
+kernel <- callJMethod(bridge, "kernel")
+assign("kernel", kernel, .runnerEnv)
+
 # Acquire the SparkContext instance to expose
 sc <- callJMethod(bridge, "javaSparkContext")
 assign("sc", sc, .runnerEnv)

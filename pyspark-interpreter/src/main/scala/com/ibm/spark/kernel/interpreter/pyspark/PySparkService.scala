@@ -1,5 +1,6 @@
 package com.ibm.spark.kernel.interpreter.pyspark
 
+import com.ibm.spark.interpreter.broker.BrokerService
 import com.ibm.spark.kernel.interpreter.pyspark.PySparkTypes._
 import org.slf4j.LoggerFactory
 import py4j.GatewayServer
@@ -21,8 +22,10 @@ class PySparkService(
   private val gatewayServer: GatewayServer,
   private val pySparkBridge: PySparkBridge,
   private val pySparkProcessHandler: PySparkProcessHandler
-) {
+) extends BrokerService {
   private val logger = LoggerFactory.getLogger(this.getClass)
+  @volatile private var _isRunning: Boolean = false
+  override def isRunning: Boolean = _isRunning
 
   /** Represents the process used to execute Python code via the bridge. */
   private lazy val pySparkProcess = {
@@ -56,6 +59,8 @@ class PySparkService(
     // Start the Python process used to execute code
     logger.debug("Launching process to execute Python code")
     pySparkProcess.start()
+
+    _isRunning = true
   }
 
   /**
@@ -76,5 +81,7 @@ class PySparkService(
 
     // Stop the server used as an entrypoint for Python
     gatewayServer.shutdown()
+
+    _isRunning = false
   }
 }

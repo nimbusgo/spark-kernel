@@ -78,11 +78,10 @@ class Kernel (
 
   /**
    * Represents the data that can be shared using the kernel as the middleman.
+   *
+   * @note Using Java structure to enable other languages to have easy access!
    */
-  val data: scala.collection.mutable.Map[String, Any] = {
-    import scala.collection.JavaConverters._
-    new ConcurrentHashMap[String, Any]().asScala
-  }
+  val data: java.util.Map[String, Any] = new ConcurrentHashMap[String, Any]()
 
   /**
    * Handles the output of interpreting code.

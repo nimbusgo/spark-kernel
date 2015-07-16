@@ -26,6 +26,8 @@ class SparkRService(
 ) extends BrokerService {
   private val logger = LoggerFactory.getLogger(this.getClass)
   @volatile private var rBackendPort: Int = -1
+  @volatile private var _isRunning: Boolean = false
+  override def isRunning: Boolean = _isRunning
 
   /** Represents the process used to execute R code via the bridge. */
   private lazy val sparkRProcess: SparkRProcess = {
@@ -69,6 +71,7 @@ class SparkRService(
       // Start the R process used to execute code
       logger.debug("Launching process to execute R code")
       sparkRProcess.start()
+      _isRunning = true
     } else {
       // Unable to initialize, so throw an exception
       throw new SparkRException(
@@ -97,5 +100,7 @@ class SparkRService(
 
     // Clear the bridge
     SparkRBridge.reset()
+
+    _isRunning = false
   }
 }
