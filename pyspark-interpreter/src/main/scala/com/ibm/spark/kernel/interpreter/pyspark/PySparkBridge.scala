@@ -15,7 +15,7 @@
  */
 package com.ibm.spark.kernel.interpreter.pyspark
 
-import com.ibm.spark.interpreter.broker.BrokerBridge
+import com.ibm.spark.interpreter.broker.{BrokerState, BrokerBridge}
 import com.ibm.spark.kernel.api.KernelLike
 import org.apache.spark.SparkContext
 
@@ -31,12 +31,14 @@ object PySparkBridge {
  * Represents the API available to PySpark to act as the bridge for data
  * between the JVM and Python.
  *
+ * @param _brokerState The container of broker state to expose
  * @param _kernel The kernel API to expose through the bridge
  * @param _sparkContext The SparkContext to expose through the bridge
  */
 class PySparkBridge(
+  private val _brokerState: BrokerState,
   private val _kernel: KernelLike,
   private val _sparkContext: SparkContext
-) extends BrokerBridge(_kernel, _sparkContext) {
+) extends BrokerBridge(_brokerState, _kernel, _sparkContext) {
   override val brokerName: String = "PySpark"
 }

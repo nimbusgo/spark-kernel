@@ -124,6 +124,14 @@ class BrokerState(private val maxQueuedCode: Int) {
   }
 
   /**
+   * Marks the specified code as unsuccessful using its id. Output from failure
+   * is treated as an empty string.
+   *
+   * @param codeId The id of the code to mark as a failure
+   */
+  def markFailure(codeId: CodeId): Unit = markFailure(codeId, "")
+
+  /**
    * Resets the state by clearing any pending code executions and marking all
    * pending executions as failures (or success if specified).
    *

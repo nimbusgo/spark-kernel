@@ -1,6 +1,6 @@
 package com.ibm.spark.interpreter.broker
 
-import java.io.{File, FileOutputStream}
+import java.io.{OutputStream, InputStream, File, FileOutputStream}
 
 import org.apache.commons.exec._
 import org.apache.commons.exec.environment.EnvironmentUtils
@@ -31,11 +31,34 @@ class BrokerProcess(
   private val brokerProcessHandler: BrokerProcessHandler,
   private val arguments: Seq[String] = Nil
 ) extends BrokerName {
+  require(processName != null && processName.trim.nonEmpty,
+    "Process name cannot be null or pure whitespace!")
+  require(entryResource != null && entryResource.trim.nonEmpty,
+    "Entry resource cannot be null or pure whitespace!")
+
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val classLoader = this.getClass.getClassLoader
 
   /** Represents the current process being executed. */
   @volatile private[broker] var currentExecutor: Option[Executor] = None
+
+  /**
+   * Returns the temporary directory to place any files needed for the process.
+   *
+   * @return The directory path as a string
+   */
+  protected def getTmpDirectory: String = System.getProperty("java.io.tmpdir")
+
+  /**
+   * Copies a resource from an input stream to an output stream.
+   *
+   * @param inputStream The input stream to copy from
+   * @param outputStream The output stream to copy to
+   *
+   * @return The result of the copy operation
+   */
+  protected def copy(inputStream: InputStream, outputStream: OutputStream) =
+    IOUtils.copy(inputStream, outputStream)
 
   /**
    * Copies a file from the kernel resources to the temporary directory.
@@ -47,7 +70,7 @@ class BrokerProcess(
   protected def copyResourceToTmp(resource: String): String = {
     val brokerRunnerResourceStream = classLoader.getResourceAsStream(resource)
 
-    val tmpDirectory = Option(System.getProperty("java.io.tmpdir"))
+    val tmpDirectory = Option(getTmpDirectory)
       .getOrElse(throw new BrokerException("java.io.tmpdir is not set!"))
     val outputName = FilenameUtils.getName(resource)
 
@@ -59,7 +82,7 @@ class BrokerProcess(
 
     // Copy the script to the specified temporary destination
     val outputScriptStream = new FileOutputStream(outputScript)
-    IOUtils.copy(
+    copy(
       brokerRunnerResourceStream,
       outputScriptStream
     )
@@ -82,16 +105,23 @@ class BrokerProcess(
   }
 
   /**
+   * Creates a new executor to be used to launch the process.
+   *
+   * @return The executor to start and manage the process
+   */
+  protected def newExecutor(): Executor = new DefaultExecutor
+
+  /**
    * Starts the Broker process.
    */
   def start(): Unit = currentExecutor.synchronized {
+    assert(currentExecutor.isEmpty, "Process has already been started!")
+
     val capitalizedBrokerName = brokerName.capitalize
-    stop() // Stop any existing process first as we only manage one process
 
     val script = copyResourceToTmp(entryResource)
     otherResources.foreach(copyResourceToTmp)
     logger.debug(s"New $brokerName script created: $script")
-    brokerBridge.javaSparkContext.getSparkHome()
 
     val commandLine = CommandLine
       .parse(processName)
@@ -100,7 +130,7 @@ class BrokerProcess(
 
     logger.debug(s"$capitalizedBrokerName command: ${commandLine.toString}")
 
-    val executor = new DefaultExecutor
+    val executor = newExecutor()
 
     // TODO: Figure out how to dynamically update the output stream used
     //       to use kernel.out, kernel.err, and kernel.in
