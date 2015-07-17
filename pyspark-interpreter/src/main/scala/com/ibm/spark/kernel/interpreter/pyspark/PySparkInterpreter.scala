@@ -64,7 +64,7 @@ class PySparkInterpreter(
       pySparkService.submitCode(code)
     )
 
-    Await.result(futureResult, 500.seconds)
+    Await.result(futureResult, Duration.Inf)
   }
 
   /**

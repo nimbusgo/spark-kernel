@@ -1,51 +1,21 @@
-package com.ibm.spark.kernel.interpreter.r
+package com.ibm.spark.kernel.interpreter.sql
 
 import java.net.URL
 
+import com.ibm.spark.interpreter.{ExecuteFailure, ExecuteOutput, Interpreter}
 import com.ibm.spark.interpreter.Results.Result
-import com.ibm.spark.interpreter._
-import com.ibm.spark.kernel.api.KernelLike
-import org.apache.spark.SparkContext
-import org.slf4j.LoggerFactory
+import org.apache.spark.sql.SQLContext
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.tools.nsc.interpreter.{InputStream, OutputStream}
+import scala.concurrent.Await
+import scala.tools.nsc.interpreter.{OutputStream, InputStream}
 
 /**
- * Represents an interpreter interface to SparkR. Requires a properly-set
- * SPARK_HOME pointing to a binary distribution (needs packaged SparkR library)
- * and an implementation of R on the path.
- *
- * @param _kernel The kernel API to expose to the SparkR instance
- * @param _sparkContext The Spark context to expose to the SparkR instance
+ * Represents an interpreter interface to Spark SQL.
  */
-class SparkRInterpreter(
-  private val _kernel: KernelLike,
-  private val _sparkContext: SparkContext
-) extends Interpreter {
-  private val logger = LoggerFactory.getLogger(this.getClass)
-
-  /** Represents the bridge used by this interpreter's R instance. */
-  private lazy val sparkRBridge = new SparkRBridge(_kernel, _sparkContext)
-
-  /** Represents the interface for R to talk to JVM Spark components. */
-  private lazy val rBackend = new ReflectiveRBackend
-
-  /** Represents the process handler used for the SparkR process. */
-  private lazy val sparkRProcessHandler: SparkRProcessHandler =
-    new SparkRProcessHandler(
-      sparkRBridge,
-      restartOnFailure = true,
-      restartOnCompletion = true
-    )
-
-  private lazy val sparkRService = new SparkRService(
-    rBackend,
-    sparkRBridge,
-    sparkRProcessHandler
-  )
-  private lazy val sparkRTransformer = new SparkRTransformer
+class SqlInterpreter(private val sqlContext: SQLContext) extends Interpreter {
+  private lazy val sqlService = new SqlService(sqlContext)
+  private lazy val sqlTransformer = new SqlTransformer
 
   /**
    * Executes the provided code with the option to silence output.
@@ -57,10 +27,10 @@ class SparkRInterpreter(
   override def interpret(code: String, silent: Boolean):
     (Result, Either[ExecuteOutput, ExecuteFailure]) =
   {
-    if (!sparkRService.isRunning) sparkRService.start()
+    if (!sqlService.isRunning) sqlService.start()
 
-    val futureResult = sparkRTransformer.transformToInterpreterResult(
-      sparkRService.submitCode(code)
+    val futureResult = sqlTransformer.transformToInterpreterResult(
+      sqlService.submitCode(code)
     )
 
     Await.result(futureResult, Duration.Inf)
@@ -71,7 +41,7 @@ class SparkRInterpreter(
    * @return A reference to the interpreter
    */
   override def start(): Interpreter = {
-    sparkRService.start()
+    sqlService.start()
 
     this
   }
@@ -81,7 +51,7 @@ class SparkRInterpreter(
    * @return A reference to the interpreter
    */
   override def stop(): Interpreter = {
-    sparkRService.stop()
+    sqlService.stop()
 
     this
   }

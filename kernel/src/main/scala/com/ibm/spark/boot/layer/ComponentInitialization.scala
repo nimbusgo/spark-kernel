@@ -27,6 +27,7 @@ import com.ibm.spark.kernel.api.Kernel
 import com.ibm.spark.kernel.interpreter.pyspark.PySparkInterpreter
 import com.ibm.spark.kernel.interpreter.r.SparkRInterpreter
 import com.ibm.spark.kernel.interpreter.scala.{TaskManagerProducerLike, StandardSparkIMainProducer, StandardSettingsProducer, ScalaInterpreter}
+import com.ibm.spark.kernel.interpreter.sql.SqlInterpreter
 import com.ibm.spark.kernel.protocol.v5.KMBuilder
 import com.ibm.spark.kernel.protocol.v5.kernel.ActorLoader
 import com.ibm.spark.kernel.protocol.v5.stream.KernelOutputStream
@@ -105,6 +106,10 @@ trait StandardComponentInitialization extends ComponentInitialization {
     //sparkRInterpreter.start()
     kernel.data.put("SparkR", sparkRInterpreter)
 
+    val sqlInterpreter = new SqlInterpreter(sqlContext)
+    //sqlInterpreter.start()
+    kernel.data.put("SQL", sqlInterpreter)
+
     // Add Scala to available data map
     kernel.data.put("Scala", interpreter)
     val defaultInterpreter: Interpreter =
@@ -118,6 +123,9 @@ trait StandardComponentInitialization extends ComponentInitialization {
         case "sparkr" =>
           logger.info("Using SparkR interpreter as default!")
           sparkRInterpreter
+        case "sql" =>
+          logger.info("Using SQL interpreter as default!")
+          sqlInterpreter
         case unknown =>
           logger.warn(s"Unknown interpreter '$unknown'! Defaulting to Scala!")
           interpreter

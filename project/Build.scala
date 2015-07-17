@@ -54,7 +54,8 @@ object Build extends Build with Settings with SubProjects with TestTasks {
       )
   ).aggregate(
     client, kernel, kernel_api, communication, protocol, macros,
-    pyspark_interpreter, scala_interpreter, sparkr_interpreter
+    pyspark_interpreter, scala_interpreter, sparkr_interpreter,
+    sql_interpreter
   ).dependsOn(
     client % "test->test",
     kernel % "test->test"
@@ -106,7 +107,8 @@ trait SubProjects extends Settings with TestTasks {
     kernel_api % "test->test;compile->compile",
     pyspark_interpreter % "test->test;compile->compile",
     scala_interpreter % "test->test;compile->compile",
-    sparkr_interpreter % "test->test;compile->compile"
+    sparkr_interpreter % "test->test;compile->compile",
+    sql_interpreter % "test->test;compile->compile"
   )
 
   /**
@@ -139,6 +141,18 @@ trait SubProjects extends Settings with TestTasks {
   lazy val sparkr_interpreter = addTestTasksToProject(Project(
     id = "sparkr-interpreter",
     base = file("sparkr-interpreter"),
+    settings = fullSettings
+  )) dependsOn(
+    protocol % "test->test;compile->compile",
+    kernel_api % "test->test;compile->compile"
+  )
+
+  /**
+   * Project represents the sql interpreter used by the Spark Kernel.
+   */
+  lazy val sql_interpreter = addTestTasksToProject(Project(
+    id = "sql-interpreter",
+    base = file("sql-interpreter"),
     settings = fullSettings
   )) dependsOn(
     protocol % "test->test;compile->compile",
