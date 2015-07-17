@@ -25,7 +25,7 @@ import com.ibm.spark.global
 import com.ibm.spark.interpreter._
 import com.ibm.spark.kernel.api.Kernel
 import com.ibm.spark.kernel.interpreter.pyspark.PySparkInterpreter
-import com.ibm.spark.kernel.interpreter.r.SparkRInterpreter
+import com.ibm.spark.kernel.interpreter.sparkr.SparkRInterpreter
 import com.ibm.spark.kernel.interpreter.scala.{TaskManagerProducerLike, StandardSparkIMainProducer, StandardSettingsProducer, ScalaInterpreter}
 import com.ibm.spark.kernel.interpreter.sql.SqlInterpreter
 import com.ibm.spark.kernel.protocol.v5.KMBuilder
@@ -303,7 +303,7 @@ trait StandardComponentInitialization extends ComponentInitialization {
         classOf[com.ibm.spark.kernel.interpreter.pyspark.PySparkInterpreter],
 
         // SparkR-interpreter project
-        classOf[com.ibm.spark.kernel.interpreter.r.SparkRInterpreter],
+        classOf[com.ibm.spark.kernel.interpreter.sparkr.SparkRInterpreter],
 
         // Kernel project
         classOf[com.ibm.spark.boot.KernelBootstrap]

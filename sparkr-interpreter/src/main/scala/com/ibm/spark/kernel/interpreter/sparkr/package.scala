@@ -13,12 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.ibm.spark.kernel.interpreter.pyspark
+package com.ibm.spark.kernel.interpreter
 
-import com.ibm.spark.interpreter.broker.BrokerTransformer
+import com.ibm.spark.interpreter.broker.{BrokerCode, BrokerPromise}
 
 /**
- * Represents a utility that can transform raw PySpark information to
- * kernel information.
+ * Contains aliases to broker types.
  */
-class PySparkTransformer extends BrokerTransformer
+package object sparkr {
+  /**
+   * Represents a promise made regarding the completion of SparkR code
+   * execution.
+   */
+  type SparkRPromise = BrokerPromise
+
+  /**
+   * Represents a block of SparkR code to be evaluated.
+   */
+  type SparkRCode = BrokerCode
+}

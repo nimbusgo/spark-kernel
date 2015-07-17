@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.ibm.spark.kernel.interpreter.pyspark
+package com.ibm.spark.kernel.interpreter.sparkr
 
-import com.ibm.spark.interpreter.broker.BrokerTransformer
+import com.ibm.spark.interpreter.broker.BrokerState
 
 /**
- * Represents a utility that can transform raw PySpark information to
- * kernel information.
+ * Represents the state structure of SparkR.
+ *
+ * @param maxQueuedCode The maximum amount of code to support being queued
+ *                      at the same time for SparkR execution
  */
-class PySparkTransformer extends BrokerTransformer
+class SparkRState(private val maxQueuedCode: Int)
+  extends BrokerState(maxQueuedCode)

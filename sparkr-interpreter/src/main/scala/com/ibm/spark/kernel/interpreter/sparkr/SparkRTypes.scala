@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.ibm.spark.kernel.interpreter.pyspark
+package com.ibm.spark.kernel.interpreter.sparkr
 
-import com.ibm.spark.interpreter.broker.BrokerTransformer
+import com.ibm.spark.interpreter.broker.BrokerTypesProvider
 
 /**
- * Represents a utility that can transform raw PySpark information to
- * kernel information.
+ * Represents all types associated with the SparkR interface.
  */
-class PySparkTransformer extends BrokerTransformer
+object SparkRTypes extends BrokerTypesProvider

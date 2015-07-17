@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.ibm.spark.kernel.interpreter.pyspark
+package com.ibm.spark.kernel.interpreter.sparkr
 
-import com.ibm.spark.interpreter.broker.BrokerTransformer
+import com.ibm.spark.interpreter.broker.BrokerException
 
 /**
- * Represents a utility that can transform raw PySpark information to
- * kernel information.
+ * Represents a generic SparkR exception.
+ *
+ * @param message The message to associate with the exception
  */
-class PySparkTransformer extends BrokerTransformer
+class SparkRException(message: String) extends BrokerException(message)
