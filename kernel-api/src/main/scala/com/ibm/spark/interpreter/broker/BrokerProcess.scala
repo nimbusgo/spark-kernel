@@ -38,6 +38,8 @@ class BrokerProcess(
 
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val classLoader = this.getClass.getClassLoader
+  private val outputDir =
+    s"kernel-$brokerName-" + java.util.UUID.randomUUID().toString
 
   /** Represents the current process being executed. */
   @volatile private[broker] var currentExecutor: Option[Executor] = None
@@ -48,6 +50,14 @@ class BrokerProcess(
    * @return The directory path as a string
    */
   protected def getTmpDirectory: String = System.getProperty("java.io.tmpdir")
+
+  /**
+   * Returns the subdirectory to use to place any files needed for the process.
+   *
+   * @return The directory path as a string
+   */
+  protected def getSubDirectory: String =
+    s"kernel-$brokerName-" + java.util.UUID.randomUUID().toString
 
   /**
    * Copies a resource from an input stream to an output stream.
@@ -72,13 +82,19 @@ class BrokerProcess(
 
     val tmpDirectory = Option(getTmpDirectory)
       .getOrElse(throw new BrokerException("java.io.tmpdir is not set!"))
+    val subDirectory = Option(getSubDirectory).getOrElse("")
     val outputName = FilenameUtils.getName(resource)
 
-    val outputScript = new File(s"$tmpDirectory/$outputName")
+    val outputDir = Seq(tmpDirectory, subDirectory)
+      .filter(_.trim.nonEmpty).mkString("/")
+    val outputScript = new File(FilenameUtils.concat(outputDir, outputName))
 
     // If our script destination is a directory, we cannot copy the script
     if (outputScript.exists() && outputScript.isDirectory)
       throw new BrokerException(s"Failed to create script: $outputScript")
+
+    // Ensure that all of the directories leading up to the script exist
+    new File(outputDir).mkdirs()
 
     // Copy the script to the specified temporary destination
     val outputScriptStream = new FileOutputStream(outputScript)

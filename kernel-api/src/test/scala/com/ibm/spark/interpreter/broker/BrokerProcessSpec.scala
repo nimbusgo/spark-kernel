@@ -2,9 +2,14 @@ package com.ibm.spark.interpreter.broker
 
 import java.io.{OutputStream, InputStream, File}
 
-import org.apache.commons.exec.Executor
+import org.apache.commons.exec._
+import org.apache.commons.io.FilenameUtils
+import org.mockito.ArgumentCaptor
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FunSpec, Matchers, OneInstancePerTest}
+
+import org.mockito.Mockito._
+import org.mockito.Matchers._
 
 class BrokerProcessSpec extends FunSpec with Matchers
   with OneInstancePerTest with MockitoSugar
@@ -13,6 +18,10 @@ class BrokerProcessSpec extends FunSpec with Matchers
   private val TestEntryResource = "test/entry/resource"
   private val TestOtherResources = Seq("test/resource/1", "test/resource/2")
   private val TestArguments = Seq("a", "b", "c")
+  private val TestEnvironment = Map(
+    "e1" -> "1",
+    "e2" -> "2"
+  )
 
   private val mockBrokerBridge = mock[BrokerBridge]
   private val mockBrokerProcessHandler = mock[BrokerProcessHandler]
@@ -38,6 +47,9 @@ class BrokerProcessSpec extends FunSpec with Matchers
       outputStream: OutputStream
     ): Int = 0
 
+    override protected def newProcessEnvironment(): Map[String, String] =
+      TestEnvironment
+    override protected def getSubDirectory: String = ""
     def doCopyResourceToTmp(resource: String) = copyResourceToTmp(resource)
   }
 
@@ -102,11 +114,14 @@ class BrokerProcessSpec extends FunSpec with Matchers
         val newResourceName = "some_resource/"
 
         val resourceFile = new File(baseDir + s"/$newResourceName")
-        resourceFile.createNewFile()
+        resourceFile.delete() // Ensure that there is not a file or something
+        resourceFile.mkdir()
 
         intercept[BrokerException] {
           brokerProcess.doCopyResourceToTmp(resourceFile.getPath)
         }
+
+        resourceFile.delete()
       }
 
       it("should throw an exception if the tmp directory is not set") {
@@ -118,40 +133,104 @@ class BrokerProcessSpec extends FunSpec with Matchers
       }
 
       it("should return the resulting destination of the resource") {
-        brokerProcess.setTmpDirectory("a")
+        val rootDir = System.getProperty("java.io.tmpdir")
+        val fileName = FilenameUtils.getBaseName(TestEntryResource)
+        val fullPath = Seq(rootDir, fileName).mkString("/")
+        val expected = new File(fullPath)
+
+        expected.delete()
+
+        brokerProcess.setTmpDirectory(rootDir)
         val destination = brokerProcess.doCopyResourceToTmp(TestEntryResource)
 
-        destination should be ("a/resource")
-      }
-    }
-
-    describe("#newProcessEnvironment") {
-      it("should return environment variables provided to this JVM") {
-        fail()
+        val actual = new File(destination)
+        actual should be (expected)
       }
     }
 
     describe("#start") {
       it("should throw an exception if the process is already started") {
-        fail()
+        brokerProcess.start()
+
+        intercept[AssertionError] {
+          brokerProcess.start()
+        }
       }
 
-      it("should execute the process using the provided arguments") {
-        fail()
+      it("should execute the process using the entry and provided arguments") {
+        val finalResourceDestination = FilenameUtils.concat(
+          System.getProperty("java.io.tmpdir"),
+          FilenameUtils.getBaseName(TestEntryResource)
+        )
+        val expected = finalResourceDestination +: TestArguments
+
+        val commandLineCaptor = ArgumentCaptor.forClass(classOf[CommandLine])
+
+        brokerProcess.start()
+        verify(mockExecutor).execute(commandLineCaptor.capture(), any(), any())
+
+        val commandLine = commandLineCaptor.getValue
+        val actual = commandLine.getArguments
+
+        actual should contain theSameElementsAs expected
       }
 
       it("should execute using the environment provided") {
-        fail()
+        val finalResourceDestination = FilenameUtils.concat(
+          System.getProperty("java.io.tmpdir"),
+          FilenameUtils.getBaseName(TestEntryResource)
+        )
+
+        val environmentCaptor =
+          ArgumentCaptor.forClass(classOf[java.util.Map[String, String]])
+
+        brokerProcess.start()
+        verify(mockExecutor).execute(any(),environmentCaptor.capture() , any())
+
+        import scala.collection.JavaConverters._
+        val environment = environmentCaptor.getValue.asScala
+
+        environment should contain theSameElementsAs TestEnvironment
       }
 
       it("should use the process handler provided to listen for events") {
-        fail()
+        val expected = mockBrokerProcessHandler
+        val finalResourceDestination = FilenameUtils.concat(
+          System.getProperty("java.io.tmpdir"),
+          FilenameUtils.getBaseName(TestEntryResource)
+        )
+
+        val executeRequestHandlerCaptor =
+          ArgumentCaptor.forClass(classOf[ExecuteResultHandler])
+
+        brokerProcess.start()
+        verify(mockExecutor).execute(
+          any(), any(), executeRequestHandlerCaptor.capture())
+
+        val actual = executeRequestHandlerCaptor.getValue
+        actual should be (expected)
       }
     }
 
     describe("#stop") {
       it("should destroy the process if it is running") {
-        fail()
+        brokerProcess.start()
+
+        val mockExecuteWatchdog = mock[ExecuteWatchdog]
+        doReturn(mockExecuteWatchdog).when(mockExecutor).getWatchdog
+
+        brokerProcess.stop()
+
+        verify(mockExecuteWatchdog).destroyProcess()
+      }
+
+      it("should not try to destroy the process if it is not running") {
+        val mockExecuteWatchdog = mock[ExecuteWatchdog]
+        doReturn(mockExecuteWatchdog).when(mockExecutor).getWatchdog
+
+        brokerProcess.stop()
+
+        verify(mockExecuteWatchdog, never()).destroyProcess()
       }
     }
   }
