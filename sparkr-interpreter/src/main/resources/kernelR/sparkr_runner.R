@@ -47,7 +47,7 @@ sparkR.connect()
 
 # Retrieve the bridge used to perform actions on the JVM
 bridge <- callJStatic(
-  "com.ibm.spark.kernel.interpreter.r.SparkRBridge", "sparkRBridge"
+  "com.ibm.spark.kernel.interpreter.sparkr.SparkRBridge", "sparkRBridge"
 )
 
 # Retrieve the state used to pull code off the JVM and push results back

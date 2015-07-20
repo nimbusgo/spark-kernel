@@ -56,7 +56,7 @@ class BrokerProcess(
    *
    * @return The directory path as a string
    */
-  protected def getSubDirectory: String =
+  protected lazy val getSubDirectory: String =
     s"kernel-$brokerName-" + java.util.UUID.randomUUID().toString
 
   /**
@@ -94,7 +94,8 @@ class BrokerProcess(
       throw new BrokerException(s"Failed to create script: $outputScript")
 
     // Ensure that all of the directories leading up to the script exist
-    new File(outputDir).mkdirs()
+    val outputDirFile = new File(outputDir)
+    if (!outputDirFile.exists()) outputDirFile.mkdirs()
 
     // Copy the script to the specified temporary destination
     val outputScriptStream = new FileOutputStream(outputScript)
@@ -105,7 +106,9 @@ class BrokerProcess(
     outputScriptStream.close()
 
     // Return the destination of the script
-    outputScript.getPath
+    val destination = outputScript.getPath
+    logger.debug(s"Successfully copied $resource to $destination")
+    destination
   }
 
   /**
@@ -136,8 +139,22 @@ class BrokerProcess(
     val capitalizedBrokerName = brokerName.capitalize
 
     val script = copyResourceToTmp(entryResource)
-    otherResources.foreach(copyResourceToTmp)
     logger.debug(s"New $brokerName script created: $script")
+
+    val createdResources = otherResources.map(copyResourceToTmp)
+
+    // Verify that all files were successfully created
+    val createdResult = (script +: createdResources).map(new File(_)).map(f => {
+      if (f.exists()) true
+      else {
+        val resource = f.getPath
+        logger.warn(s"Failed to create resource: $resource")
+        false
+      }
+    }).forall(_ == true)
+    if (!createdResult) throw new BrokerException(
+      s"Failed to create resources for $capitalizedBrokerName"
+    )
 
     val commandLine = CommandLine
       .parse(processName)

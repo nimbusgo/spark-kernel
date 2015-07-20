@@ -20,8 +20,9 @@
 #
 # obj: The object representing the character vector to flatten
 # shouldTrim: If true, will trim each individual element
+# sepCharacter: Used as the separator between combined strings
 #
-flatten <- function(obj, shouldTrim = TRUE) {
+flatten <- function(obj, shouldTrim = TRUE, sepCharacter = "\n") {
   Reduce(function(x, y) {
     flattenedX <- if (length(x) > 1) flatten(x) else x
     flattenedY <- if (length(y) > 1) flatten(y) else y
@@ -29,6 +30,6 @@ flatten <- function(obj, shouldTrim = TRUE) {
     finalX <- if (shouldTrim) trimws(flattenedX) else flattenedX
     finalY <- if (shouldTrim) trimws(flattenedY) else flattenedY
 
-    paste(finalX, finalY)
+    paste(finalX, finalY, sep = sepCharacter)
   }, obj)
 }
