@@ -42,8 +42,16 @@ class PySparkInterpreter(
 ) extends Interpreter {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
+  // TODO: Replace hard-coded maximum queue count
+  /** Represents the state used by this interpreter's Python instance. */
+  private lazy val pySparkState = new PySparkState(500)
+
   /** Represents the bridge used by this interpreter's Python interface. */
-  private lazy val pySparkBridge = new PySparkBridge(_kernel, _sparkContext)
+  private lazy val pySparkBridge = new PySparkBridge(
+    pySparkState,
+    _kernel,
+    _sparkContext
+  )
 
   /** Represents the interface for Python to talk to JVM Spark components. */
   private lazy val gatewayServer = new GatewayServer(pySparkBridge, 0)

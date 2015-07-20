@@ -41,8 +41,16 @@ class SparkRInterpreter(
 ) extends Interpreter {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
+  // TODO: Replace hard-coded maximum queue count
+  /** Represents the state used by this interpreter's R instance. */
+  private lazy val sparkRState = new SparkRState(500)
+
   /** Represents the bridge used by this interpreter's R instance. */
-  private lazy val sparkRBridge = new SparkRBridge(_kernel, _sparkContext)
+  private lazy val sparkRBridge = new SparkRBridge(
+    sparkRState,
+    _kernel,
+    _sparkContext
+  )
 
   /** Represents the interface for R to talk to JVM Spark components. */
   private lazy val rBackend = new ReflectiveRBackend
