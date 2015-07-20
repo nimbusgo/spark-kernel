@@ -64,7 +64,7 @@ class BrokerProcessSpec extends FunSpec with Matchers
 
     override protected def newProcessEnvironment(): Map[String, String] =
       TestEnvironment
-    override protected def getSubDirectory: String = ""
+    override protected lazy val getSubDirectory: String = ""
     def doCopyResourceToTmp(resource: String) = copyResourceToTmp(resource)
   }
 
