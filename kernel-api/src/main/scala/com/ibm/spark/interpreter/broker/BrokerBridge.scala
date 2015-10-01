@@ -1,5 +1,6 @@
 package com.ibm.spark.interpreter.broker
 
+import com.ibm.spark.interpreter.broker.producer.{SQLContextProducerLike, JavaSparkContextProducerLike}
 import com.ibm.spark.kernel.api.KernelLike
 import org.apache.spark.api.java.JavaSparkContext
 import org.apache.spark.sql.SQLContext
@@ -18,6 +19,7 @@ class BrokerBridge(
   private val _kernel: KernelLike,
   private val _sparkContext: SparkContext
 ) extends BrokerName {
+  this: JavaSparkContextProducerLike with SQLContextProducerLike =>
   /**
    * Represents the current state of the broker.
    */
@@ -26,12 +28,12 @@ class BrokerBridge(
   /**
    * Represents the context used as one of the main entrypoints into Spark.
    */
-  val javaSparkContext: JavaSparkContext = new JavaSparkContext(_sparkContext)
+  val javaSparkContext: JavaSparkContext = newJavaSparkContext(_sparkContext)
 
   /**
-   * Represents the context used as the SQL entrypoint into Spark for Python.
+   * Represents the context used as the SQL entrypoint into Spark.
    */
-  val sqlContext: SQLContext = new SQLContext(_sparkContext)
+  val sqlContext: SQLContext = newSQLContext(_sparkContext)
 
   /**
    * Represents the kernel API available.

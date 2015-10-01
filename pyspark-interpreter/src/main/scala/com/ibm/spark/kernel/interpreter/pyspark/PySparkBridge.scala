@@ -15,6 +15,7 @@
  */
 package com.ibm.spark.kernel.interpreter.pyspark
 
+import com.ibm.spark.interpreter.broker.producer.{StandardSQLContextProducer, StandardJavaSparkContextProducer, SQLContextProducerLike, JavaSparkContextProducerLike}
 import com.ibm.spark.interpreter.broker.{BrokerState, BrokerBridge}
 import com.ibm.spark.kernel.api.KernelLike
 import org.apache.spark.SparkContext
@@ -25,6 +26,27 @@ import org.apache.spark.SparkContext
 object PySparkBridge {
   /** Represents the maximum amount of code that can be queued for Python. */
   val MaxQueuedCode = 500
+
+  /**
+   * Creates a new PySparkBridge instance.
+   *
+   * @param brokerState The container of broker state to expose
+   * @param kernel The kernel API to expose through the bridge
+   * @param sparkContext The SparkContext to expose through the bridge
+   *
+   * @return The new PySpark bridge
+   */
+  def apply(
+    brokerState: BrokerState,
+    kernel: KernelLike,
+    sparkContext: SparkContext
+  ): PySparkBridge = {
+    new PySparkBridge(
+      _brokerState = brokerState,
+      _kernel = kernel,
+      _sparkContext = sparkContext
+    ) with StandardJavaSparkContextProducer with StandardSQLContextProducer
+  }
 }
 
 /**
@@ -35,10 +57,12 @@ object PySparkBridge {
  * @param _kernel The kernel API to expose through the bridge
  * @param _sparkContext The SparkContext to expose through the bridge
  */
-class PySparkBridge(
+class PySparkBridge private (
   private val _brokerState: BrokerState,
   private val _kernel: KernelLike,
   private val _sparkContext: SparkContext
 ) extends BrokerBridge(_brokerState, _kernel, _sparkContext) {
+  this: JavaSparkContextProducerLike with SQLContextProducerLike =>
+
   override val brokerName: String = "PySpark"
 }

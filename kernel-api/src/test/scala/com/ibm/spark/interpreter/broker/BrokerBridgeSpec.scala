@@ -15,7 +15,10 @@
  */
 package com.ibm.spark.interpreter.broker
 
+import com.ibm.spark.interpreter.broker.producer.{SQLContextProducerLike, JavaSparkContextProducerLike}
 import com.ibm.spark.kernel.api.KernelLike
+import org.apache.spark.api.java.JavaSparkContext
+import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FunSpec, Matchers, OneInstancePerTest}
@@ -29,6 +32,11 @@ class BrokerBridgeSpec extends FunSpec with Matchers with OneInstancePerTest
   private val mockSparkConf = mock[SparkConf]
   private val mockSparkContext = mock[SparkContext]
 
+  private val mockJavaSparkContext = mock[JavaSparkContext]
+  doReturn(mockSparkContext).when(mockJavaSparkContext).sc
+  private val mockSqlContext = mock[SQLContext]
+  doReturn(mockSparkContext).when(mockSqlContext).sparkContext
+
   // A new SQLContext is created per request, meaning this needs mocking
   doReturn(mockSparkConf).when(mockSparkContext).getConf
   doReturn(Array[(String, String)]()).when(mockSparkConf).getAll
@@ -37,7 +45,10 @@ class BrokerBridgeSpec extends FunSpec with Matchers with OneInstancePerTest
     mockBrokerState,
     mockKernel,
     mockSparkContext
-  )
+  ) with JavaSparkContextProducerLike with SQLContextProducerLike {
+    override def newJavaSparkContext(sparkContext: SparkContext): JavaSparkContext = mockJavaSparkContext
+    override def newSQLContext(sparkContext: SparkContext): SQLContext = mockSqlContext
+  }
 
   describe("BrokerBridge") {
     describe("#state") {

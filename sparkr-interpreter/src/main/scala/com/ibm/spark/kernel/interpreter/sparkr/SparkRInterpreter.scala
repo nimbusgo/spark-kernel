@@ -46,7 +46,7 @@ class SparkRInterpreter(
   private lazy val sparkRState = new SparkRState(500)
 
   /** Represents the bridge used by this interpreter's R instance. */
-  private lazy val sparkRBridge = new SparkRBridge(
+  private lazy val sparkRBridge = SparkRBridge(
     sparkRState,
     _kernel,
     _sparkContext

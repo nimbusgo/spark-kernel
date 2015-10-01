@@ -47,7 +47,7 @@ class PySparkInterpreter(
   private lazy val pySparkState = new PySparkState(500)
 
   /** Represents the bridge used by this interpreter's Python interface. */
-  private lazy val pySparkBridge = new PySparkBridge(
+  private lazy val pySparkBridge = PySparkBridge(
     pySparkState,
     _kernel,
     _sparkContext
