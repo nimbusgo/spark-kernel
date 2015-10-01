@@ -117,7 +117,7 @@ class SparkRInterpreter(
   override def classLoader: ClassLoader = this.getClass.getClassLoader
 
   // Unsupported (but can be invoked)
-  override def mostRecentVar: String = ""
+  override def lastExecutionVariableName: Option[String] = None
 
   // Unsupported (but can be invoked)
   override def read(variableName: String): Option[AnyRef] = None
