@@ -14,8 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+library(SparkR)
+library(sparkPackageTest)
 
-.onLoad <- function(libname, pkgname) {
-  sparkR.onLoad(libname, pkgname)
-}
+sc <- sparkR.init()
 
+run1 <- myfunc(5L)
+
+run2 <- myfunc(-4L)
+
+sparkR.stop()
+
+if(run1 != 6) quit(save = "no", status = 1)
+
+if(run2 != -3) quit(save = "no", status = 1)

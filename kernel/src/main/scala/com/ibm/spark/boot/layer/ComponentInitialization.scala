@@ -190,6 +190,9 @@ trait StandardComponentInitialization extends ComponentInitialization {
     logger.info("Using " + master + " as Spark Master")
     conf.setMaster(master)
 
+    logger.info("Setting deployMode to client")
+    conf.set("spark.submit.deployMode", "client")
+
     logger.info("Using " + appName + " as Spark application name")
     conf.setAppName(appName)
 
