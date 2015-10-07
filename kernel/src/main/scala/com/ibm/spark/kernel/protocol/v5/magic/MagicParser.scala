@@ -36,7 +36,7 @@ class MagicParser(magicLoader: MagicLoader) {
       magicRegex.findFirstMatchIn(codeBlob)
 
     matchData match {
-      case Some(m) => Some((m.group(1), m.after(1).toString.trim))
+      case Some(m) => Some((m.group(1), m.after(1).toString))
       case None => None
     }
   }
